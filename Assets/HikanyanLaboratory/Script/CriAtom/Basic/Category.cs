@@ -64,47 +64,39 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
                     // 他のプレハブインスタンスがあれば破棄
                     Unload();
                     currentInfo = info;
-                    PlayCue(info.CueId);
+                    Debug.Log($"{currentInfo.AcbAsset.name} : {currentInfo.CueId}");
+                    PlayCue(currentInfo.CueId);
+                    UpdateView();
                 });
                 UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(obj);
             }
         }
 
-        public List<CriAtomSourceForAsset> SetCues()
-        {
-            List<CriAtomSourceForAsset> atomSources = new List<CriAtomSourceForAsset>();
-            foreach (var cue in cueList)
-            {
-                GameObject gameObject = new GameObject($"{cue}Source");
-                CriAtomSourceForAsset atomSource = gameObject.AddComponent<CriAtomSourceForAsset>();
-                atomSource.Cue = cue;
-                atomSources.Add(atomSource);
-            }
-
-            return atomSources;
-        }
-
-        void Unload()
+        public void Unload()
         {
             if (currentLoaded != null)
             {
                 Destroy(currentLoaded);
-                currentLoaded = null;
             }
+            currentLoaded = null;
+            currentInfo = default;
         }
 
-        void PlayCue(int cueId)
+        public void PlayCue(int cueId)
         {
             if (currentLoaded == null)
             {
                 currentLoaded = new GameObject($"{currentInfo.CueId}Source");
+                currentLoaded.transform.SetParent(transform);
             }
-            CriAtomSourceForAsset atomSource = currentLoaded.AddComponent<CriAtomSourceForAsset>();
+
+            var atomSource = currentLoaded.GetComponent<CriAtomSourceForAsset>() ??
+                             currentLoaded.AddComponent<CriAtomSourceForAsset>();
             atomSource.Cue = currentInfo;
             atomSource.Play(cueId);
         }
 
-        void SetVolume(AudioType audioType, float volume)
+        public void SetVolume(AudioType audioType, float volume)
         {
             CriWare.CriAtom.SetCategoryVolume(audioType.ToString(), volume);
         }
