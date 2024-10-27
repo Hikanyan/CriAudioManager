@@ -38,6 +38,7 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
         void Start()
         {
             UpdateView();
+            UpdateInputKey();
         }
 
         async void UpdateView()
@@ -66,7 +67,6 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
                     currentInfo = info;
                     Debug.Log($"{currentInfo.AcbAsset.name} : {currentInfo.CueId}");
                     PlayCue(currentInfo.CueId);
-                    UpdateView();
                 });
                 UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(obj);
             }
@@ -78,8 +78,23 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
             {
                 Destroy(currentLoaded);
             }
+
             currentLoaded = null;
             currentInfo = default;
+        }
+
+        // Test用
+        public void UpdateInputKey()
+        {
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                SetVolume(AudioType.BGM, bgmVolume += 0.1f);
+            }
+
+            if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                SetVolume(AudioType.BGM, bgmVolume -= 0.1f);
+            }
         }
 
         public void PlayCue(int cueId)
@@ -93,6 +108,16 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
             var atomSource = currentLoaded.GetComponent<CriAtomSourceForAsset>() ??
                              currentLoaded.AddComponent<CriAtomSourceForAsset>();
             atomSource.Cue = currentInfo;
+
+            // Handleがnullの場合はロードを試みる
+            if (atomSource.Cue.AcbAsset.Handle == null)
+            {
+                Debug.Log("AcbAsset is not loaded. Attempting to load...");
+                atomSource.Cue.AcbAsset.OnLoaded += (acbAsset) => atomSource.Play(cueId);
+                atomSource.Cue.AcbAsset.LoadAsync();
+                return;
+            }
+
             atomSource.Play(cueId);
         }
 
