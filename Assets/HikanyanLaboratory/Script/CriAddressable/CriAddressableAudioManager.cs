@@ -1,7 +1,6 @@
 using System;
 using CriWare;
 using CriWare.Assets;
-using JetBrains.Annotations;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -9,70 +8,77 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace HikanyanLaboratory
 {
     /// <summary>
-    ///　TODO : AddresableとCriを使用した汎用性のある便利なManagerを作成する
-    /// 
+    /// AddressableとCriを使用した便利なAudioManager
     /// </summary>
     public class CriAddressableAudioManager : IDisposable
     {
         private CriAtomExPlayer _player;
-
-        public CriAtomExPlayer Player
-        {
-            get => _player;
-        }
-
-        public static CriAddressableAudioManager Instance { get; } = new CriAddressableAudioManager();
         private bool _disposedValue;
 
-        /// <summary>
-        /// CueSheetやCueのロード用のメソッド
-        /// </summary>
-        public async void LoadCueAsync(string cueSheetAddress, Action<CriAtomCueReference> onLoaded)
+        public static CriAddressableAudioManager Instance { get; } = new CriAddressableAudioManager();
+
+        private CriAddressableAudioManager()
         {
-            // AddressableからCriAtomCueReferenceをロード
-            AsyncOperationHandle<CriAtomCueReference> handle =
-                Addressables.LoadAssetAsync<CriAtomCueReference>(cueSheetAddress);
-            await handle.Task; // ロード完了まで待機
+            _player = new CriAtomExPlayer();
+        }
+
+        /// <summary>
+        /// キューシートが登録されていなければ、Addressableからロードして登録
+        /// </summary>
+        public async void LoadAndRegisterCueSheet(string cueSheetAddress, Action<CriAtomCueReference> onLoaded)
+        {
+            // キューシートが既に登録済みならロード不要
+            if (CriAtomAssetsLoader.Instance.GetCueSheet(cueSheetAddress) != null)
+            {
+                Debug.Log($"CueSheet '{cueSheetAddress}' is already loaded.");
+                return;
+            }
+
+            // キューシートを非同期でロード
+            AsyncOperationHandle<CriAtomCueReference> handle = Addressables.LoadAssetAsync<CriAtomCueReference>(cueSheetAddress);
+            await handle.Task;
 
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 CriAtomCueReference cueReference = handle.Result;
+                CriAtomAssetsLoader.AddCueSheet(cueReference.AcbAsset);
                 onLoaded?.Invoke(cueReference);
+                Debug.Log($"CueSheet '{cueSheetAddress}' loaded and registered successfully.");
             }
             else
             {
-                Debug.LogError($"Failed to load Cue: {cueSheetAddress}, Error: {handle.OperationException}");
+                Debug.LogError($"Failed to load CueSheet: {cueSheetAddress}, Error: {handle.OperationException}");
             }
         }
 
         /// <summary>
-        /// 再生用のPlayback
+        /// 指定されたキューを再生
         /// </summary>
-        public struct SimplePlayback
+        public Playback StartPlayback(CriAtomCueReference cue, float vol = 1.0f, float pitch = 0)
+        {
+            Player.SetCue(cue.AcbAsset.Handle, cue.CueId);
+            Player.SetVolume(vol);
+            Player.SetPitch(pitch);
+            Playback playback = new Playback(Player, Player.Start());
+            return playback;
+        }
+
+        public CriAtomExPlayer Player => _player;
+
+        public struct Playback
         {
             private readonly CriAtomExPlayer _player;
-            CriAtomExPlayback _playback;
+            private CriAtomExPlayback _playback;
 
-            internal SimplePlayback(CriAtomExPlayer player, CriAtomExPlayback pb)
+            internal Playback(CriAtomExPlayer player, CriAtomExPlayback playback)
             {
                 _player = player;
-                _playback = pb;
+                _playback = playback;
             }
 
-            public void Pause()
-            {
-                _playback.Pause();
-            }
-
-            public void Resume()
-            {
-                _playback.Resume(CriAtomEx.ResumeMode.PausedPlayback);
-            }
-
-            public bool IsPaused()
-            {
-                return _playback.IsPaused();
-            }
+            public void Pause() => _playback.Pause();
+            public void Resume() => _playback.Resume(CriAtomEx.ResumeMode.PausedPlayback);
+            public bool IsPaused() => _playback.IsPaused();
 
             public void SetVolumeAndPitch(float vol, float pitch)
             {
@@ -81,36 +87,18 @@ namespace HikanyanLaboratory
                 _player.Update(_playback);
             }
 
-            public void Stop()
-            {
-                _playback.Stop();
-            }
-
-            public bool IsPlaying()
-            {
-                return _playback.GetStatus() == CriAtomExPlayback.Status.Playing;
-            }
-        }
-
-        public SimplePlayback StartPlayback(CriAtomCueReference cue, float vol = 1.0f, float pitch = 0)
-        {
-            Player.SetCue(cue.AcbAsset.Handle, cue.CueId);
-            Player.SetVolume(vol);
-            Player.SetPitch(pitch);
-            SimplePlayback pb = new SimplePlayback(Player, Player.Start());
-            return pb;
-        }
-
-        private CriAddressableAudioManager()
-        {
-            _player = new CriAtomExPlayer();
+            public void Stop() => _playback.Stop();
+            public bool IsPlaying() => _playback.GetStatus() == CriAtomExPlayback.Status.Playing;
         }
 
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)
             {
-                _player?.Dispose();
+                if (disposing)
+                {
+                    _player?.Dispose();
+                }
                 _player = null;
                 _disposedValue = true;
             }
