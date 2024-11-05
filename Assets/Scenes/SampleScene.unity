@@ -392,7 +392,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1054137707
 Transform:
   m_ObjectHideFlags: 0
@@ -420,12 +420,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e727e7ed2ece4f3c940d92ef2fa9cef1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _testCueReference:
+  acbAssetReference:
     m_AssetGUID: 409d97bd801ae724581c7b619cfb0628
     m_SubObjectName: 
     m_SubObjectType: 
     m_EditorAssetChanged: 0
-  _testCueHandle: {fileID: -6750239444755058063, guid: 409d97bd801ae724581c7b619cfb0628, type: 3}
+  _cueReference:
+    acbAsset: {fileID: -6750239444755058063, guid: 409d97bd801ae724581c7b619cfb0628, type: 3}
+    cueId: 2
 --- !u!1001 &1103687774
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -478,6 +480,14 @@ PrefabInstance:
       propertyPath: dspBusSetting
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 2745839250037692588, guid: 02a89eeb5c1d6d14badfa006262a094b, type: 3}
+      propertyPath: acbAssets.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2745839250037692588, guid: 02a89eeb5c1d6d14badfa006262a094b, type: 3}
+      propertyPath: acbAssets.Array.data[0]
+      value: 
+      objectReference: {fileID: -6750239444755058063, guid: 409d97bd801ae724581c7b619cfb0628, type: 3}
     - target: {fileID: 8839290999872612996, guid: 02a89eeb5c1d6d14badfa006262a094b, type: 3}
       propertyPath: m_Name
       value: CRI
@@ -504,7 +514,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2057814308
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -532,7 +542,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 24.84, y: 24.84, z: 24.84}
+  m_LocalScale: {x: 1.68, y: 1.68, z: 1.68}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
