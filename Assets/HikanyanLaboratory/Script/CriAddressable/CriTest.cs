@@ -22,7 +22,7 @@ namespace HikanyanLaboratory
             if (cueAsset != null)
             {
                 RegisterAndPlayCue(cueAsset);
-            }
+            }   
         }
 
         private async UniTask<CriAtomAcbAsset> LoadAcbAssetAsync()

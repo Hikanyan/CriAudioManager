@@ -10,10 +10,10 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace HikanyanLaboratory
 {
     [Serializable]
-    public class SimplifiedCueReference
+    public class CueReference
     {
-        public string cueSheetAddress;  // Addressableのキューシートアドレス
-        public int cueId;               // 再生するCue ID
+        public AssetReferenceT<CriAtomAcbAsset> cueSheetAddress; // Addressableのキューシートアドレス
+        public CriAtomCueReference cueId; // 再生するCue ID
     }
 
     public class CriAddressableAudioManager : IDisposable
@@ -34,21 +34,21 @@ namespace HikanyanLaboratory
         /// <summary>
         /// 指定されたキューを再生（キューシートが未登録ならAddressableAssetsからロードして登録）
         /// </summary>
-        public async UniTask<SimplePlayback> StartPlayback(SimplifiedCueReference cueReference, float volume = 1.0f, float pitch = 0)
+        public async UniTask<SimplePlayback> StartPlayback(CueReference cueReference, float volume = 1.0f, float pitch = 0)
         {
             var cueSheet = await LoadAndRegisterCueSheet(cueReference.cueSheetAddress);
 
             // キューシートがロードされていれば再生
             if (cueSheet != null)
             {
-                _player.SetCue(cueSheet.Handle, cueReference.cueId);
+                _player.SetCue(cueSheet.Handle, cueReference.cueId.CueId);
                 _player.SetVolume(volume);
                 _player.SetPitch(pitch);
                 return new SimplePlayback(_player, _player.Start());
             }
             else
             {
-                Debug.LogError($"Failed to start playback: CueSheet '{cueReference.cueSheetAddress}' not found.");
+                Debug.LogError($"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
                 return default;
             }
         }
@@ -56,32 +56,35 @@ namespace HikanyanLaboratory
         /// <summary>
         /// キューシートをロードし、キャッシュに保存
         /// </summary>
-        private async UniTask<CriAtomAcbAsset> LoadAndRegisterCueSheet(string cueSheetAddress)
+        private async UniTask<CriAtomAcbAsset> LoadAndRegisterCueSheet(AssetReferenceT<CriAtomAcbAsset> cueSheetAddress)
         {
+            string assetKey = cueSheetAddress.AssetGUID;
+
             // キャッシュにあるか確認
-            if (_cueSheetCache.TryGetValue(cueSheetAddress, out var cachedCueSheet))
+            if (_cueSheetCache.TryGetValue(assetKey, out var cachedCueSheet))
             {
-                Debug.Log($"Using cached CueSheet: '{cueSheetAddress}'");
+                Debug.Log($"Using cached CueSheet: '{assetKey}'");
                 return cachedCueSheet;
             }
 
             // キャッシュにない場合、Addressableからロード
-            AsyncOperationHandle<CriAtomCueReference> handle = Addressables.LoadAssetAsync<CriAtomCueReference>(cueSheetAddress);
+            AsyncOperationHandle<CriAtomAcbAsset> handle = cueSheetAddress.LoadAssetAsync();
             await handle.Task;
 
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
-                var cueReference = handle.Result;
-                CriAtomAssetsLoader.AddCueSheet(cueReference.AcbAsset);  // キューシートを登録
+                var cueSheet = handle.Result;
+                CriAtomAssetsLoader.AddCueSheet(cueSheet);  // キューシートを登録
+                await UniTask.WaitUntil(() => CriAtomAssetsLoader.Instance.GetCueSheet(cueSheet)?.AcbAsset.Loaded == true);
 
                 // キャッシュに保存
-                _cueSheetCache[cueSheetAddress] = cueReference.AcbAsset;
-                Debug.Log($"Loaded and registered CueSheet: '{cueSheetAddress}'");
-                return cueReference.AcbAsset;
+                _cueSheetCache[assetKey] = cueSheet;
+                Debug.Log($"Loaded and registered CueSheet: '{assetKey}'");
+                return cueSheet;
             }
             else
             {
-                Debug.LogError($"Failed to load CueSheet: {cueSheetAddress}, Error: {handle.OperationException}");
+                Debug.LogError($"Failed to load CueSheet: {assetKey}, Error: {handle.OperationException}");
                 return null;
             }
         }
@@ -124,6 +127,13 @@ namespace HikanyanLaboratory
                 if (disposing)
                 {
                     _player?.Dispose();
+
+                    // キャッシュされたキューシートのリリース
+                    foreach (var cueSheet in _cueSheetCache.Values)
+                    {
+                        CriAtomAssetsLoader.ReleaseCueSheet(cueSheet, true);
+                    }
+                    _cueSheetCache.Clear();
                 }
                 _player = null;
                 _disposedValue = true;
