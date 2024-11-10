@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using CriWare.Assets;
 using Cysharp.Threading.Tasks;
@@ -13,15 +14,15 @@ public class CriAddressableAudioManagerTests : MonoBehaviour
 
     private CriAddressableAudioManager _audioManager;
     private CriAddressableAudioManager.SimplePlayback _playback;
-    private ReactiveProperty<float> valueReactive;
+    private ReactiveProperty<float> _valueReactive;
 
     private async void Start()
     {
         // ReactivePropertyの初期化
-        valueReactive = new ReactiveProperty<float>(value);
+        _valueReactive = new ReactiveProperty<float>(value);
 
         // 値の変更を監視し、更新があったら処理を実行
-        valueReactive.Subscribe(newValue =>
+        _valueReactive.Subscribe(newValue =>
         {
             Debug.Log($"Value changed: {newValue}");
             UpdateValue(newValue);
@@ -31,22 +32,18 @@ public class CriAddressableAudioManagerTests : MonoBehaviour
 
         // 再生を開始し、完了を待機
         _playback = await _audioManager.StartPlayback(cueReference);
+        await UniTask.Delay(TimeSpan.FromSeconds(1f));
+        _playback.Pause();
+        _playback.Resume();
+        await UniTask.Delay(TimeSpan.FromSeconds(1f));
+        _playback.Stop();
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (_valueReactive != null)
         {
-            // 再生中の場合、ボリュームとピッチを変更
-            if (_playback.IsPlaying())
-            {
-                _playback.SetVolumeAndPitch(valueReactive.Value, -0.5f);
-                Debug.Log("Volume and pitch adjusted.");
-            }
-            else
-            {
-                Debug.LogWarning("Playback is not active.");
-            }
+            _valueReactive.Value = value;
         }
     }
 
@@ -54,9 +51,9 @@ public class CriAddressableAudioManagerTests : MonoBehaviour
     private void OnValidate()
     {
         // ReactivePropertyの値を更新
-        if (valueReactive != null)
+        if (_valueReactive != null)
         {
-            valueReactive.Value = value;
+            _valueReactive.Value = value;
         }
     }
 
@@ -64,7 +61,7 @@ public class CriAddressableAudioManagerTests : MonoBehaviour
     {
         if (_playback.IsPlaying())
         {
-            _playback.SetVolumeAndPitch(newValue, -0.5f);
+            _playback.SetVolume(newValue);
             Debug.Log($"Updated Value to: {newValue}");
         }
     }

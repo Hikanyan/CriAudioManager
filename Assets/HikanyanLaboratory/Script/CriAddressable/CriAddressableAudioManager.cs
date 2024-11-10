@@ -22,7 +22,7 @@ namespace HikanyanLaboratory
         private bool _disposedValue;
 
         // キューシートのキャッシュ
-        private Dictionary<string, CriAtomAcbAsset> _cueSheetCache = new Dictionary<string, CriAtomAcbAsset>();
+        private readonly Dictionary<string, CriAtomAcbAsset> _cueSheetCache = new Dictionary<string, CriAtomAcbAsset>();
 
         public static CriAddressableAudioManager Instance { get; } = new CriAddressableAudioManager();
 
@@ -34,7 +34,8 @@ namespace HikanyanLaboratory
         /// <summary>
         /// 指定されたキューを再生（キューシートが未登録ならAddressableAssetsからロードして登録）
         /// </summary>
-        public async UniTask<SimplePlayback> StartPlayback(CueReference cueReference, float volume = 1.0f, float pitch = 0)
+        public async UniTask<SimplePlayback> StartPlayback(CueReference cueReference, float volume = 1.0f,
+            float pitch = 0)
         {
             var cueSheet = await LoadAndRegisterCueSheet(cueReference.cueSheetAddress);
 
@@ -48,7 +49,8 @@ namespace HikanyanLaboratory
             }
             else
             {
-                Debug.LogError($"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
+                Debug.LogError(
+                    $"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
                 return default;
             }
         }
@@ -74,8 +76,9 @@ namespace HikanyanLaboratory
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 var cueSheet = handle.Result;
-                CriAtomAssetsLoader.AddCueSheet(cueSheet);  // キューシートを登録
-                await UniTask.WaitUntil(() => CriAtomAssetsLoader.Instance.GetCueSheet(cueSheet)?.AcbAsset.Loaded == true);
+                CriAtomAssetsLoader.AddCueSheet(cueSheet); // キューシートを登録
+                await UniTask.WaitUntil(() =>
+                    CriAtomAssetsLoader.Instance.GetCueSheet(cueSheet)?.AcbAsset.Loaded == true);
 
                 // キャッシュに保存
                 _cueSheetCache[assetKey] = cueSheet;
@@ -108,16 +111,22 @@ namespace HikanyanLaboratory
             public void Pause() => _playback.Pause();
             public void Resume() => _playback.Resume(CriAtomEx.ResumeMode.PausedPlayback);
             public bool IsPaused() => _playback.IsPaused();
+            public void Stop() => _playback.Stop();
+            public bool IsPlaying() => _playback.GetStatus() == CriAtomExPlayback.Status.Playing;
+            public long GetTime() => _playback.GetTime();
+            public long GetTimeSyncedWithAudio() => _playback.GetTimeSyncedWithAudio();
 
-            public void SetVolumeAndPitch(float volume, float pitch)
+            public void SetVolume(float volume)
             {
                 _player.SetVolume(volume);
-                _player.SetPitch(pitch);
                 _player.Update(_playback);
             }
 
-            public void Stop() => _playback.Stop();
-            public bool IsPlaying() => _playback.GetStatus() == CriAtomExPlayback.Status.Playing;
+            public void SetPitch(float pitch)
+            {
+                _player.SetPitch(pitch);
+                _player.Update(_playback);
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -133,8 +142,10 @@ namespace HikanyanLaboratory
                     {
                         CriAtomAssetsLoader.ReleaseCueSheet(cueSheet, true);
                     }
+
                     _cueSheetCache.Clear();
                 }
+
                 _player = null;
                 _disposedValue = true;
             }
