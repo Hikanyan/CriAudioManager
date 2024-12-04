@@ -19,7 +19,7 @@ namespace HikanyanLaboratory
 
         private CriAddressableAudioManager _criAddressableAudioManager;
         private CriAddressableAudioManager.SimplePlayback? _currentPlayback;
-
+        [SerializeField] SerializableReactiveProperty<int> _musicNameReactiveProperty = new ();
         public ReactiveProperty<int> CurrentIndex { get; private set; } = new ReactiveProperty<int>(0);
         public ReactiveProperty<float> Volume { get; private set; } = new ReactiveProperty<float>(1f);
 
@@ -32,19 +32,23 @@ namespace HikanyanLaboratory
             _volumeSlider.onValueChanged.AddListener(SetVolume);
 
             // ボタンイベントの設定
+            _playButton.onClick.AddListener(StartMusic);
             _nextButton.onClick.AddListener(Next);
             _backButton.onClick.AddListener(Back);
 
             // Dropdownの初期設定
-            _musicDropdown.ClearOptions();
-            _musicDropdown.options.Add(new Dropdown.OptionData { text = "None" });
-            foreach (var audio in _audioList)
-            {
-                _musicDropdown.options.Add(new Dropdown.OptionData { text = audio.ToString() });
-            }
+            InitializeDropdown();
 
             // Dropdownの選択変更時イベント
             _musicDropdown.onValueChanged.AddListener(DropdownValueChanged);
+        }
+
+        private void InitializeDropdown()
+        {
+            _musicDropdown.ClearOptions();
+            List<string> options = new List<string> { "None" }; // 最初に"None"オプションを追加
+            options.AddRange(_audioList.ConvertAll(audio => audio.ToString()));
+            _musicDropdown.AddOptions(options);
         }
 
         /// <summary>
@@ -59,6 +63,11 @@ namespace HikanyanLaboratory
 
             _currentPlayback = await _criAddressableAudioManager.StartPlayback(_audioList[playIndex]);
             _musicNameText.text = _audioList[playIndex].ToString();
+        }
+
+        public void StartMusic()
+        {
+          //  PlayMusic(CurrentIndex);
         }
 
         /// <summary>
@@ -95,6 +104,7 @@ namespace HikanyanLaboratory
 
         private void DropdownValueChanged(int value)
         {
+            // "None"オプションの分インデックスを調整
             CurrentIndex.Value = value - 1;
         }
     }

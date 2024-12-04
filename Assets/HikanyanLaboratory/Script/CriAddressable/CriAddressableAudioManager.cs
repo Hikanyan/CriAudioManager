@@ -22,8 +22,9 @@ namespace HikanyanLaboratory
         private bool _disposedValue;
 
         // キューシートのキャッシュ
+        // ハッシュセット
         private readonly Dictionary<string, CriAtomAcbAsset> _cueSheetCache = new Dictionary<string, CriAtomAcbAsset>();
-
+        private readonly HashSet<CriAtomAcbAsset> _cueIdCache = new ();
         public static CriAddressableAudioManager Instance { get; } = new CriAddressableAudioManager();
 
         private CriAddressableAudioManager()
