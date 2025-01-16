@@ -20,6 +20,9 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
         [SerializeField] Transform buttonsParent = null;
         [SerializeField] GameObject buttonTemplate = null;
         [SerializeField] List<CriAtomCueReference> cueList = new List<CriAtomCueReference>();
+        [SerializeField] Slider bgmVolumeSlider = null;
+        [SerializeField] Slider seVolumeSlider = null;
+        
         private CriAtomCueReference currentInfo;
         private GameObject currentLoaded = null;
 
@@ -38,7 +41,19 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
         void Start()
         {
             UpdateView();
-            UpdateInputKey();
+            
+            // スライダーの初期値を設定
+            if (bgmVolumeSlider != null)
+            {
+                bgmVolumeSlider.value = bgmVolume;
+                bgmVolumeSlider.onValueChanged.AddListener(OnBgmVolumeChanged);
+            }
+
+            if (seVolumeSlider != null)
+            {
+                seVolumeSlider.value = seVolume;
+                seVolumeSlider.onValueChanged.AddListener(OnSeVolumeChanged);
+            }
         }
 
         async void UpdateView()
@@ -83,20 +98,6 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
             currentInfo = default;
         }
 
-        // Test用
-        public void UpdateInputKey()
-        {
-            if (Input.GetKeyDown(KeyCode.UpArrow))
-            {
-                SetVolume(AudioType.BGM, bgmVolume += 0.1f);
-            }
-
-            if (Input.GetKeyDown(KeyCode.DownArrow))
-            {
-                SetVolume(AudioType.BGM, bgmVolume -= 0.1f);
-            }
-        }
-
         public void PlayCue(int cueId)
         {
             if (currentLoaded == null)
@@ -131,7 +132,17 @@ namespace HikanyanLaboratory.Script.CriAtom.Basic
             CriWare.CriAtom.SetCategoryVolume(audioTypeBgm.ToString(), 1.0f);
             CriWare.CriAtom.SetCategoryVolume(audioTypeSe.ToString(), 1.0f);
         }
+        private void OnBgmVolumeChanged(float value)
+        {
+            bgmVolume = value;
+            SetVolume(audioTypeBgm, bgmVolume);
+        }
 
+        private void OnSeVolumeChanged(float value)
+        {
+            seVolume = value;
+            SetVolume(audioTypeSe, seVolume);
+        }
         #endregion
     }
 }

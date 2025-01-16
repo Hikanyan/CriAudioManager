@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using CriWare;
 using CriWare.Assets;
 using Cysharp.Threading.Tasks;
@@ -11,153 +12,192 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
 {
     public class AudioManager : PureSingleton<AudioManager>
     {
-        
         private readonly Dictionary<string, CriAtomAcbAsset> _cueSheetCache = new Dictionary<string, CriAtomAcbAsset>();
-        
-        private CriAtomExPlayer _bgmPlayer;
-        private CriAtomExPlayer _sePlayer;
-        private CriAtomExPlayer _voicePlayer;
+
+        private readonly Dictionary<CriAudioType, CriAtomExPlayer> _audioPlayers =
+            new Dictionary<CriAudioType, CriAtomExPlayer>
+            {
+                { CriAudioType.BGM, new CriAtomExPlayer() },
+                { CriAudioType.SE, new CriAtomExPlayer() },
+                { CriAudioType.Voice, new CriAtomExPlayer() }
+            };
 
         private float _masterVolume = 1.0f;
         private float _bgmVolume = 1.0f;
         private float _seVolume = 1.0f;
         private float _voiceVolume = 1.0f;
 
-        public void Initialize()
+        public enum CriAudioType
         {
-            _bgmPlayer = new CriAtomExPlayer();
-            _sePlayer = new CriAtomExPlayer();
-            _voicePlayer = new CriAtomExPlayer();
+            BGM,
+            SE,
+            Voice
         }
 
         #region Audio Control Methods
 
-        public void PlayBGM(string cueName)
+        public async Task<CriAtomExPlayback> Play(CriAudioType audioType, CueReference cueReference)
         {
-            _bgmPlayer.SetCue(null, cueName); // キューシートは事前にロード済みと仮定
-            _bgmPlayer.SetVolume(_bgmVolume * _masterVolume);
-            _bgmPlayer.Start();
+            if (!_audioPlayers.TryGetValue(audioType, out var player))
+            {
+                Debug.LogError($"Audio type {audioType} not found.");
+                return default;
+            }
+
+            var cueSheet = await LoadAndRegisterCueSheet(cueReference.cueSheetAddress);
+
+            // キューシートがロードされていれば再生
+            if (cueSheet != null)
+            {
+                player.SetCue(cueSheet.Handle, cueReference.cueId.CueId);
+                player.SetVolume(GetVolume(audioType));
+
+                return player.Start();
+            }
+            else
+            {
+                Debug.LogError(
+                    $"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
+                return default;
+            }
         }
 
-        public void PlaySE(string cueName)
+        private async UniTask<CriAtomExAcb> GetAcbAsync(string cueSheetName)
         {
-            _sePlayer.SetCue(null, cueName);
-            _sePlayer.SetVolume(_seVolume * _masterVolume);
-            _sePlayer.Start();
+            CriAtomExAcb acb = null;
+
+            while (acb == null && !string.IsNullOrEmpty(cueSheetName))
+            {
+                acb = CriAtom.GetAcb(cueSheetName);
+                if (acb == null)
+                {
+                    Debug.Log($"Waiting for ACB '{cueSheetName}' to be available...");
+                    await UniTask.Yield();
+                }
+            }
+
+            if (acb != null)
+            {
+                Debug.Log($"ACB '{cueSheetName}' successfully retrieved.");
+            }
+
+            return acb;
         }
 
-        public void PlayVoice(string cueName)
+        public void Stop(CriAtomExPlayback playbackInfo)
         {
-            _voicePlayer.SetCue(null, cueName);
-            _voicePlayer.SetVolume(_voiceVolume * _masterVolume);
-            _voicePlayer.Start();
+            playbackInfo.Stop();
+        }
+
+
+        public void Pause(CriAtomExPlayback playbackInfo)
+        {
+            playbackInfo.Pause();
+        }
+
+        public void Resume(CriAtomExPlayback playbackInfo, CriAtomEx.ResumeMode resumeMode)
+        {
+            playbackInfo.Resume(resumeMode);
         }
 
         public void StopAll()
         {
-            _bgmPlayer.Stop();
-            _sePlayer.Stop();
-            _voicePlayer.Stop();
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Stop();
+            }
         }
 
         public void PauseAll()
         {
-            _bgmPlayer.Pause();
-            _sePlayer.Pause();
-            _voicePlayer.Pause();
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Pause();
+            }
         }
 
         public void ResumeAll()
         {
-            _bgmPlayer.Resume(CriAtomEx.ResumeMode.AllPlayback);
-            _sePlayer.Resume(CriAtomEx.ResumeMode.AllPlayback);
-            _voicePlayer.Resume(CriAtomEx.ResumeMode.AllPlayback);
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Resume(CriAtomEx.ResumeMode.AllPlayback);
+            }
+        }
+
+        private float GetVolume(CriAudioType audioType)
+        {
+            return audioType switch
+            {
+                CriAudioType.BGM => _bgmVolume * _masterVolume,
+                CriAudioType.SE => _seVolume * _masterVolume,
+                CriAudioType.Voice => _voiceVolume * _masterVolume,
+                _ => _masterVolume
+            };
         }
 
         #endregion
 
         #region Volume Control Methods
 
-        public void SetCategoryVolume(string categoryName, float volume)
-        {
-            CriAtom.SetCategoryVolume(categoryName, volume);
-        }
-
-        public float GetCategoryVolume(string categoryName)
-        {
-            return CriAtom.GetCategoryVolume(categoryName);
-        }
-
         public void SetMasterVolume(float volume)
         {
-            _masterVolume = volume;
+            _masterVolume = Mathf.Clamp01(volume);
             ApplyVolume();
         }
 
-        public void SetBGMVolume(float volume)
+        public void SetVolume(CriAudioType audioType, float volume)
         {
-            _bgmVolume = volume;
-            _bgmPlayer.SetVolume(_bgmVolume * _masterVolume);
-        }
+            switch (audioType)
+            {
+                case CriAudioType.BGM:
+                    _bgmVolume = Mathf.Clamp01(volume);
+                    break;
+                case CriAudioType.SE:
+                    _seVolume = Mathf.Clamp01(volume);
+                    break;
+                case CriAudioType.Voice:
+                    _voiceVolume = Mathf.Clamp01(volume);
+                    break;
+            }
 
-        public void SetSEVolume(float volume)
-        {
-            _seVolume = volume;
-            _sePlayer.SetVolume(_seVolume * _masterVolume);
-        }
-
-        public void SetVoiceVolume(float volume)
-        {
-            _voiceVolume = volume;
-            _voicePlayer.SetVolume(_voiceVolume * _masterVolume);
+            ApplyVolume();
         }
 
         private void ApplyVolume()
         {
-            SetBGMVolume(_bgmVolume);
-            SetSEVolume(_seVolume);
-            SetVoiceVolume(_voiceVolume);
+            foreach (var type in _audioPlayers.Keys)
+            {
+                if (_audioPlayers.TryGetValue(type, out var player))
+                {
+                    player.SetVolume(GetVolume(type));
+                }
+            }
         }
 
         #endregion
 
-        #region Advanced Features
+        #region CueSheet Management
 
-        public void LoadCueSheet(string acbPath, string awbPath = null)
-        {
-            CriAtomExAcb acb = CriAtomExAcb.LoadAcbFile(null, acbPath, awbPath);
-            if (acb == null)
-            {
-                throw new Exception($"Failed to load CueSheet from {acbPath}");
-            }
-        }
-        
-        /// <summary>
-        /// キューシートをロードし、キャッシュに保存
-        /// </summary>
         private async UniTask<CriAtomAcbAsset> LoadAndRegisterCueSheet(AssetReferenceT<CriAtomAcbAsset> cueSheetAddress)
         {
             string assetKey = cueSheetAddress.AssetGUID;
 
-            // キャッシュにあるか確認
             if (_cueSheetCache.TryGetValue(assetKey, out var cachedCueSheet))
             {
                 Debug.Log($"Using cached CueSheet: '{assetKey}'");
                 return cachedCueSheet;
             }
 
-            // キャッシュにない場合、Addressableからロード
             AsyncOperationHandle<CriAtomAcbAsset> handle = cueSheetAddress.LoadAssetAsync();
             await handle.Task;
 
             if (handle.Status == AsyncOperationStatus.Succeeded)
             {
                 var cueSheet = handle.Result;
-                CriAtomAssetsLoader.AddCueSheet(cueSheet); // キューシートを登録
+                CriAtomAssetsLoader.AddCueSheet(cueSheet);
                 await UniTask.WaitUntil(() =>
                     CriAtomAssetsLoader.Instance.GetCueSheet(cueSheet)?.AcbAsset.Loaded == true);
 
-                // キャッシュに保存
                 _cueSheetCache[assetKey] = cueSheet;
                 Debug.Log($"Loaded and registered CueSheet: '{assetKey}'");
                 return cueSheet;
@@ -169,35 +209,45 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
             }
         }
 
+        #endregion
+
+        #region 3D Audio
+
         public void Set3DListener(CriAtomEx3dListener listener)
         {
-            _bgmPlayer.Set3dListener(listener);
-            _sePlayer.Set3dListener(listener);
-            _voicePlayer.Set3dListener(listener);
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Set3dListener(listener);
+            }
         }
 
         public void Set3DSource(CriAtomEx3dSource source)
         {
-            _bgmPlayer.Set3dSource(source);
-            _sePlayer.Set3dSource(source);
-            _voicePlayer.Set3dSource(source);
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Set3dSource(source);
+            }
         }
 
         public void Enable3DSound(bool enable)
         {
             var panType = enable ? CriAtomEx.PanType.Pos3d : CriAtomEx.PanType.Pan3d;
-            _bgmPlayer.SetPanType(panType);
-            _sePlayer.SetPanType(panType);
-            _voicePlayer.SetPanType(panType);
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.SetPanType(panType);
+            }
         }
 
         #endregion
 
         public override void Dispose()
         {
-            _bgmPlayer.Dispose();
-            _sePlayer.Dispose();
-            _voicePlayer.Dispose();
+            foreach (var player in _audioPlayers.Values)
+            {
+                player.Dispose();
+            }
+
+            _audioPlayers.Clear();
         }
     }
 }
