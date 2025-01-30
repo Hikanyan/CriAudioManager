@@ -959,7 +959,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _volumeText: {fileID: 8573357640463864505}
-  _volumeSlider: {fileID: 0}
+  _volumeSlider: {fileID: 8937142584929411763}
   _volumeInputField: {fileID: 4833013880317028321}
   _soundType: 0
 --- !u!1 &7067177706932672446
