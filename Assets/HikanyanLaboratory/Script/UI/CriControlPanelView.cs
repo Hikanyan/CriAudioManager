@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace HikanyanLaboratory.Audio
@@ -11,8 +12,8 @@ namespace HikanyanLaboratory.Audio
         /// ボリュームコントロールの初期化
         /// </summary>
         public void Initialize(Dictionary<SoundType, float> initialVolumes,
-            System.Action<SoundType, float> onSliderChanged,
-            System.Action<SoundType, string> onInputChanged)
+            Action<SoundType, float> onSliderChanged,
+            Action<SoundType, string> onInputChanged)
         {
             foreach (var volumeControl in _volumeControls)
             {
