@@ -1,41 +1,30 @@
 using System;
 
-namespace HikanyanLaboratory.Audio.Audio_Manager
+namespace HikanyanLaboratory
 {
     public abstract class PureSingleton<T> : IDisposable where T : class, new()
     {
-        private static T instance = null;
-
-        public static T I => Instance;
+        private static T _instance = null;
 
         public static T Instance
         {
             get
             {
-                createInstance();
-                return instance;
+                CreateInstance();
+                return _instance;
             }
         }
 
         //インスタンスを生成する
-        public static void createInstance()
+        public static void CreateInstance()
         {
-            if (instance == null)
-            {
-                instance = new T();
-            }
-        }
-
-        //Singletonが存在するか
-        public static bool isExists()
-        {
-            return instance != null;
+            _instance ??= new T();
         }
 
         //Singletonを破棄する
         public virtual void Dispose()
         {
-            instance = null;
+            _instance = null;
         }
     }
 }

@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-namespace HikanyanLaboratory.Audio.Audio_Manager
+namespace HikanyanLaboratory.Audio
 {
     public class AudioManager : PureSingleton<AudioManager>
     {
@@ -19,7 +19,7 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
             {
                 { CriAudioType.BGM, new CriAtomExPlayer() },
                 { CriAudioType.SE, new CriAtomExPlayer() },
-                { CriAudioType.Voice, new CriAtomExPlayer() }
+                { CriAudioType.VOICE, new CriAtomExPlayer() }
             };
 
         private float _masterVolume = 1.0f;
@@ -29,21 +29,23 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
 
         public enum CriAudioType
         {
+            Master,
             BGM,
             SE,
-            Voice
+            VOICE,
         }
 
         #region Audio Control Methods
 
-        public async Task<CriAtomExPlayback> Play(CriAudioType audioType, CueReference cueReference)
+        public CriAtomExPlayback Play(CriAudioType audioType, CueReference cueReference)
         {
             if (!_audioPlayers.TryGetValue(audioType, out var player))
             {
                 Debug.LogError($"Audio type {audioType} not found.");
-                return default;
             }
 
+            // _cueSheetCache に再生するCue SheetがなければLoadする
+            
             var cueSheet = await LoadAndRegisterCueSheet(cueReference.cueSheetAddress);
 
             // キューシートがロードされていれば再生
@@ -58,7 +60,6 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
             {
                 Debug.LogError(
                     $"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
-                return default;
             }
         }
 
@@ -128,10 +129,11 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
         {
             return audioType switch
             {
+                CriAudioType.Master => _masterVolume,
                 CriAudioType.BGM => _bgmVolume * _masterVolume,
                 CriAudioType.SE => _seVolume * _masterVolume,
-                CriAudioType.Voice => _voiceVolume * _masterVolume,
-                _ => _masterVolume
+                CriAudioType.VOICE => _voiceVolume * _masterVolume,
+                _ => throw new ArgumentOutOfRangeException(nameof(audioType), audioType, null)
             };
         }
 
@@ -139,23 +141,20 @@ namespace HikanyanLaboratory.Audio.Audio_Manager
 
         #region Volume Control Methods
 
-        public void SetMasterVolume(float volume)
-        {
-            _masterVolume = Mathf.Clamp01(volume);
-            ApplyVolume();
-        }
-
         public void SetVolume(CriAudioType audioType, float volume)
         {
             switch (audioType)
             {
+                case CriAudioType.Master:
+                    _masterVolume = Mathf.Clamp01(volume);
+                    break;
                 case CriAudioType.BGM:
                     _bgmVolume = Mathf.Clamp01(volume);
                     break;
                 case CriAudioType.SE:
                     _seVolume = Mathf.Clamp01(volume);
                     break;
-                case CriAudioType.Voice:
+                case CriAudioType.VOICE:
                     _voiceVolume = Mathf.Clamp01(volume);
                     break;
             }

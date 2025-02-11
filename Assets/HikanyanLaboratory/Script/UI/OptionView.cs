@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace HikanyanLaboratory.Audio
@@ -8,7 +9,7 @@ namespace HikanyanLaboratory.Audio
         [SerializeField] private GameObject _optionPanel;
         [SerializeField] private Button _closeButton;
 
-        public void Initialize(System.Action onBackButtonPressed)
+        public void Initialize(Action onBackButtonPressed)
         {
             if (_closeButton != null)
             {
