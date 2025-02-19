@@ -42,11 +42,11 @@ namespace HikanyanLaboratory.Audio
             if (!_audioPlayers.TryGetValue(audioType, out var player))
             {
                 Debug.LogError($"Audio type {audioType} not found.");
+                return default; // エラー時はデフォルト値を返す
             }
 
             // _cueSheetCache に再生するCue SheetがなければLoadする
-            
-            var cueSheet = await LoadAndRegisterCueSheet(cueReference.cueSheetAddress);
+            var cueSheet = LoadAndRegisterCueSheet(cueReference.cueSheetAddress).GetAwaiter().GetResult();
 
             // キューシートがロードされていれば再生
             if (cueSheet != null)
@@ -60,8 +60,10 @@ namespace HikanyanLaboratory.Audio
             {
                 Debug.LogError(
                     $"Failed to start playback: CueSheet '{cueReference.cueSheetAddress.AssetGUID}' or CueID '{cueReference.cueId.CueId}' not found.");
+                return default; // 再生できない場合はデフォルト値を返す
             }
         }
+
 
         private async UniTask<CriAtomExAcb> GetAcbAsync(string cueSheetName)
         {
