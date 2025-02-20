@@ -8,6 +8,10 @@ namespace HikanyanLaboratory.Script.Audio
 {
     public class TestCri : MonoBehaviour
     {
+        enum Cue
+        {
+            music_00
+        }
         private void Start()
         {
             // 初期状態でBGMを再生
@@ -27,14 +31,14 @@ namespace HikanyanLaboratory.Script.Audio
 
         private void PlayBGM()
         {
-            CriAudioManager.Instance.Play(CriAudioType.CueSheet_BGM, Cue.MeteorShower);
+            CriAudioManager.Instance.Play(CriAudioType.CueSheet_BGM, Cue.music_00);
         }
 
         private void PlaySE()
         {
            //CriAudioManager.Instance.Play(CriAudioType.CueSheet_SE, "Perfect");
            //CriAudioManager.Instance.Play(CriAudioType.CueSheet_SE, CueSheet_BGM.おひつじ座の曲);
-            CriAudioManager.Instance.Play(CriAudioType.CueSheet_SE, Cue.おひつじ座の曲);
+           // CriAudioManager.Instance.Play(CriAudioType.CueSheet_SE, Cue.おひつじ座の曲);
         }
 
         async UniTask Task()
